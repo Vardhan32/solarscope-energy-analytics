@@ -58,3 +58,42 @@ def test_process_plant():
     assert "INTERVAL_CAPACITY_FACTOR_PCT" in plant_ts_df.columns
     assert "MINUTE" in plant_ts_df.columns
     assert "HOUR" in plant_ts_df.columns
+
+
+def test_clean_weather_data_forward_fills_only_from_past():
+    meta = PLANTS[4135001]
+    raw_weather = pd.DataFrame({
+        "DATE_TIME": [
+            "2020-05-15 00:00:00",
+            "2020-05-15 00:15:00",
+            "2020-05-15 00:30:00",
+        ],
+        "PLANT_ID": [4135001] * 3,
+        "SOURCE_KEY": ["SENSOR_01"] * 3,
+        "AMBIENT_TEMPERATURE": [25.0, np.nan, 27.0],
+        "MODULE_TEMPERATURE": [28.0, np.nan, 30.0],
+        "IRRADIATION": [0.0, np.nan, 0.2],
+    })
+
+    cleaned = clean_weather_data(raw_weather, meta)
+    assert cleaned.loc[1, "AMBIENT_TEMPERATURE"] == 25.0
+    assert cleaned.loc[1, "MODULE_TEMPERATURE"] == 28.0
+    assert cleaned.loc[1, "IRRADIATION"] == 0.0
+
+
+def test_clean_weather_data_rejects_leading_missing_values():
+    meta = PLANTS[4135001]
+    raw_weather = pd.DataFrame({
+        "DATE_TIME": [
+            "2020-05-15 00:00:00",
+            "2020-05-15 00:15:00",
+        ],
+        "PLANT_ID": [4135001] * 2,
+        "SOURCE_KEY": ["SENSOR_01"] * 2,
+        "AMBIENT_TEMPERATURE": [np.nan, 25.0],
+        "MODULE_TEMPERATURE": [np.nan, 28.0],
+        "IRRADIATION": [np.nan, 0.2],
+    })
+
+    with pytest.raises(ValueError, match="leading missing values"):
+        clean_weather_data(raw_weather, meta)

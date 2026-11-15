@@ -1,7 +1,8 @@
-"""Solar Power Generation Forecasting Pipeline for SolarScope.
+"""Solar power generation estimation pipeline for retrospective evaluation.
 
-Implements feature engineering, chronological train/test splitting, baseline models,
-Linear/Ridge, Random Forest, and HistGradientBoostingRegressor models.
+Uses timestamp-aligned observed weather and backward-looking generation lags.
+The current evaluation is not a day-ahead forecast because future weather inputs
+and recursive multi-step prediction are not implemented.
 """
 
 from typing import Dict, Any, Tuple, List, Optional
@@ -26,7 +27,7 @@ logger = get_logger("forecasting")
 
 
 def engineer_features(plant_ts_df: pd.DataFrame) -> pd.DataFrame:
-    """Constructs leakage-free temporal, geometric, lag, and weather features."""
+    """Build temporal, observed-weather, and backward-looking lag features."""
     df = plant_ts_df.copy().sort_values("DATE_TIME").reset_index(drop=True)
 
     # 1. Clear-sky solar elevation proxy (diurnal bell curve between 06:00 and 18:00)
@@ -49,11 +50,13 @@ def engineer_features(plant_ts_df: pd.DataFrame) -> pd.DataFrame:
     # Rolling average of previous day's power (shift by 96 to prevent intra-day leakage)
     df["ROLLING_MEAN_PREV_DAY"] = df["AC_POWER_KW"].shift(INTERVALS_PER_DAY).rolling(INTERVALS_PER_DAY, min_periods=1).mean()
 
-    # Fill earliest history with diurnal climatology proxy rather than arbitrary zeros
-    df["LAG_96"] = df["LAG_96"].bfill().fillna(0.0)
-    df["LAG_192"] = df["LAG_192"].bfill().fillna(0.0)
-    df["LAG_672"] = df["LAG_672"].bfill().fillna(0.0)
-    df["ROLLING_MEAN_PREV_DAY"] = df["ROLLING_MEAN_PREV_DAY"].bfill().fillna(0.0)
+    # There is no historical observation for the first lag window. Keep the
+    # cold-start convention explicit; never backfill from later timestamps,
+    # because that would let future target values leak into earlier rows.
+    df["LAG_96"] = df["LAG_96"].fillna(0.0)
+    df["LAG_192"] = df["LAG_192"].fillna(0.0)
+    df["LAG_672"] = df["LAG_672"].fillna(0.0)
+    df["ROLLING_MEAN_PREV_DAY"] = df["ROLLING_MEAN_PREV_DAY"].fillna(0.0)
 
     return df
 
@@ -100,7 +103,7 @@ def chronological_split(
 
 
 class SolarForecastEngine:
-    """Manages model training, evaluation, comparison, and 7-day inference."""
+    """Train and compare models on a chronological retrospective holdout."""
 
     def __init__(self, meta: PlantMetadata):
         self.meta = meta

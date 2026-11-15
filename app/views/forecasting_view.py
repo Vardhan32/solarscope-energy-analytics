@@ -18,10 +18,11 @@ def render_forecasting(
     """Renders 7-day chronological forecast benchmarking, actual vs predicted curves, and limitations."""
     meta = PLANTS[plant_id]
 
-    st.markdown(f"### 🤖 Machine Learning Forecasting Studio: {meta.name}")
+    st.markdown(f"### 🤖 Machine Learning Generation-Estimation Studio: {meta.name}")
     st.markdown(
-        f"7-Day Day-Ahead Chronological Generation Forecast for **{meta.total_ac_capacity_mw:.2f} MW** fleet. "
-        "Evaluated on a strict, out-of-time chronological holdout test set with **zero lookahead leakage**."
+        f"7-Day Retrospective Generation Estimation Benchmark for **{meta.total_ac_capacity_mw:.2f} MW** fleet. "
+        "Evaluated on a chronological holdout test set using observed weather and backward-looking measured generation lags. "
+        "*(Note: In an operational day-ahead forecast, numerical weather predictions (NWP) would replace observed pyranometer readings).*"
     )
 
     # Headline Model Evaluation Metrics Table

@@ -49,11 +49,13 @@ def engineer_features(plant_ts_df: pd.DataFrame) -> pd.DataFrame:
     # Rolling average of previous day's power (shift by 96 to prevent intra-day leakage)
     df["ROLLING_MEAN_PREV_DAY"] = df["AC_POWER_KW"].shift(INTERVALS_PER_DAY).rolling(INTERVALS_PER_DAY, min_periods=1).mean()
 
-    # Fill earliest history with diurnal climatology proxy rather than arbitrary zeros
-    df["LAG_96"] = df["LAG_96"].bfill().fillna(0.0)
-    df["LAG_192"] = df["LAG_192"].bfill().fillna(0.0)
-    df["LAG_672"] = df["LAG_672"].bfill().fillna(0.0)
-    df["ROLLING_MEAN_PREV_DAY"] = df["ROLLING_MEAN_PREV_DAY"].bfill().fillna(0.0)
+    # There is no historical observation for the first lag window. Keep the
+    # cold-start convention explicit; never backfill from later timestamps,
+    # because that would let future target values leak into earlier rows.
+    df["LAG_96"] = df["LAG_96"].fillna(0.0)
+    df["LAG_192"] = df["LAG_192"].fillna(0.0)
+    df["LAG_672"] = df["LAG_672"].fillna(0.0)
+    df["ROLLING_MEAN_PREV_DAY"] = df["ROLLING_MEAN_PREV_DAY"].fillna(0.0)
 
     return df
 

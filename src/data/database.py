@@ -6,7 +6,7 @@ for fast interactive dashboard operations.
 
 import sqlite3
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 import pandas as pd
 
 from src.config import DB_PATH, PLANTS

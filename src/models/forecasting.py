@@ -1,7 +1,8 @@
-"""Solar Power Generation Forecasting Pipeline for SolarScope.
+"""Solar power generation estimation pipeline for retrospective evaluation.
 
-Implements feature engineering, chronological train/test splitting, baseline models,
-Linear/Ridge, Random Forest, and HistGradientBoostingRegressor models.
+Uses timestamp-aligned observed weather and backward-looking generation lags.
+The current evaluation is not a day-ahead forecast because future weather inputs
+and recursive multi-step prediction are not implemented.
 """
 
 from typing import Dict, Any, Tuple, List, Optional
@@ -26,7 +27,7 @@ logger = get_logger("forecasting")
 
 
 def engineer_features(plant_ts_df: pd.DataFrame) -> pd.DataFrame:
-    """Constructs leakage-free temporal, geometric, lag, and weather features."""
+    """Build temporal, observed-weather, and backward-looking lag features."""
     df = plant_ts_df.copy().sort_values("DATE_TIME").reset_index(drop=True)
 
     # 1. Clear-sky solar elevation proxy (diurnal bell curve between 06:00 and 18:00)
@@ -102,7 +103,7 @@ def chronological_split(
 
 
 class SolarForecastEngine:
-    """Manages model training, evaluation, comparison, and 7-day inference."""
+    """Train and compare models on a chronological retrospective holdout."""
 
     def __init__(self, meta: PlantMetadata):
         self.meta = meta

@@ -1,4 +1,4 @@
-# ☀️ SolarScope: Solar Power Generation Analytics & Forecasting Platform
+# SolarScope: Solar Power Generation Analytics & Retrospective Estimation
 
 [![CI Pipeline](https://github.com/Vardhan32/solarscope-energy-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Vardhan32/solarscope-energy-analytics/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.14-blue)](https://www.python.org/)
@@ -6,9 +6,9 @@
 [![License: CC0](https://img.shields.io/badge/License-CC0-green.svg)](https://creativecommons.org/publicdomain/zero/1.0/)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-**SolarScope** is an end-to-end solar energy analytics and machine learning forecasting platform built for **Renewable Energy Analysts**, **Solar Performance Engineers**, and **Grid Operators**. 
+**SolarScope** is a solar energy analytics and retrospective generation-estimation project. It explores plant performance, inverter behaviour, weather relationships, anomaly rules, and tabular ML using historical telemetry. 
 
-Powered by **real-world utility-scale photovoltaic telemetry (61.5 MW combined capacity across 44 inverters)** from Gandhinagar Solar Park, SolarScope unifies data engineering, asset performance benchmarking, supervisory anomaly detection, day-ahead power forecasting, and relational SQL exploration into an interactive analytics suite.
+Powered by **real-world utility-scale photovoltaic telemetry (61.5 MW combined capacity across 44 inverters)** from Gandhinagar Solar Park, SolarScope unifies data engineering, asset performance benchmarking, supervisory anomaly detection, retrospective generation estimation, and relational SQL exploration into an interactive analytics suite.
 
 ---
 
@@ -19,14 +19,14 @@ Powered by **real-world utility-scale photovoltaic telemetry (61.5 MW combined c
 - 🔌 **Inverter Fleet Benchmarking:** Inverter-to-inverter performance tracking, specific yield (kWh/kWp), relative energy indexes, and actual vs theoretical STC-derated expected power.
 - ⛅ **Weather & Thermal Dynamics:** Empirical modeling of plane-of-array irradiance drive, cell heating coefficients ($T_{\text{cell}} - T_{\text{amb}} = k \cdot G$), and thermal power derating curves (20°C to 70°C).
 - ⚠️ **Supervisory Anomaly Detection:** Automated detection of critical daytime inverter trips/outages, localized string failure (<70% of fleet median), inverter clipping, and conversion degradation.
-- 🤖 **ML Day-Ahead Forecasting Studio:** Multi-model benchmark (Gradient Boosting, Random Forest, Ridge Regression, Diurnal Climatology, 24h Persistence) evaluated on a strict 7-day chronological holdout test set with **zero lookahead leakage**.
+- 🤖 **ML Generation-Estimation Studio:** Compares Gradient Boosting, Random Forest, Ridge Regression, Diurnal Climatology, and 24-hour persistence on a chronological holdout. The current model uses observed weather and lagged measured generation, so results are retrospective estimates — not day-ahead forecast accuracy.
 - 🗄️ **Relational SQL Analytics Console:** Direct SQL query interface against an embedded SQLite analytical database (`solarscope.db`) with pre-built queries and CSV export.
 
 ---
 
-## 🏆 Machine Learning Forecasting Evaluation
+## Retrospective ML Generation-Estimation Evaluation
 
-Models were evaluated on a strict **7-day chronological holdout horizon (672 consecutive 15-minute intervals)** with temporal features, clear-sky geometric proxies, backward lags (`LAG_96`, `LAG_192`), and numerical weather forecast variables:
+Models were evaluated on the final **7 days (672 consecutive 15-minute intervals)** of each plant time series. Inputs include timestamp-aligned observed weather measurements and lagged measured generation. Because weather observations from the evaluation period and actual generation lags within that period are available to the model, these scores describe a retrospective benchmark; they must not be presented as day-ahead forecast results.
 
 ### Plant 1 (Gandhinagar Solar Park - 31.02 MW AC)
 | Model Architecture | MAE (kW) | RMSE (kW) | $R^2$ Score | nMAE (% Cap) | nRMSE (% Cap) | WAPE (%) |
@@ -70,9 +70,9 @@ flowchart TD
         PARQUET --> ANOMALY["Supervisory Anomaly Detector\n• Critical Daytime Outages\n• Severe Underperformance (<70% median)\n• Inverter Saturation / Clipping\n• Sub-par Conversion Efficiency"]
     end
 
-    subgraph ML_Forecasting["Day-Ahead Forecasting Engine"]
-        PARQUET --> FEAT_ENG["Leakage-Free Feature Engineering\n• 24h, 48h, 7-day Historical Lags\n• Cyclic Solar Hour (Sin/Cos)\n• Clear-Sky Geometric Elevation\n• NWP Meteorological Proxy"]
-        FEAT_ENG --> SPLIT["Chronological Holdout Split\n(27-day Train | 7-day Horizon Test)"]
+    subgraph ML_Forecasting["Retrospective Generation-Estimation Engine"]
+        PARQUET --> FEAT_ENG["Feature Engineering\n• Backward-looking generation lags\n• Cyclic solar-hour features\n• Clear-sky geometric proxy\n• Observed weather measurements"]
+        FEAT_ENG --> SPLIT["Chronological Holdout Split\n(earlier history | final 7-day test)"]
         SPLIT --> MODELS["Model Ensemble Benchmarking\n• Persistence 24h Baseline\n• Diurnal Climatology Baseline\n• Linear Regression (Ridge)\n• Random Forest Regressor\n• HistGradientBoosting"]
         MODELS --> EVAL["Evaluation Engine\n(MAE, RMSE, R², nMAE, nRMSE, WAPE)"]
     end
@@ -82,7 +82,7 @@ flowchart TD
         BENCH --> UI_BENCH["Inverter Benchmarking & Heatmaps"]
         WEATHER --> UI_WTR["Weather & Thermal Dynamics View"]
         ANOMALY --> UI_ANOM["Asset Health & Operational Alerts"]
-        EVAL --> UI_FC["ML Forecasting Studio"]
+        EVAL --> UI_FC["ML Estimation Studio"]
         SQLITE --> UI_SQL["SQL Analytics Console (Live Queries)"]
     end
 ```

@@ -58,3 +58,27 @@ def test_chronological_split():
     assert len(train_df) == 1000 - 192
     # Ensure strict temporal ordering (max train date < min test date)
     assert train_df["DATE_TIME"].max() < test_df["DATE_TIME"].min()
+
+
+
+def test_engineered_lags_never_backfill_from_future_rows():
+    dates = pd.date_range("2020-05-01", periods=220, freq="15min")
+    base = pd.DataFrame({
+        "DATE_TIME": dates,
+        "HOUR": dates.hour,
+        "MINUTE": dates.minute,
+        "AC_POWER_KW": np.arange(len(dates), dtype=float),
+    })
+    changed_future = base.copy()
+    changed_future.loc[96, "AC_POWER_KW"] = 99999.0
+
+    base_features = engineer_features(base)
+    changed_features = engineer_features(changed_future)
+
+    # The first lag is unavailable at row 0. A later measurement must not
+    # be copied backwards into that earlier row.
+    assert base_features.loc[0, "LAG_96"] == 0.0
+    assert changed_features.loc[0, "LAG_96"] == 0.0
+    # Once a real 24-hour history exists, the lag points to the prior day.
+    assert base_features.loc[96, "LAG_96"] == base.loc[0, "AC_POWER_KW"]
+    assert changed_features.loc[96, "LAG_96"] == changed_future.loc[0, "AC_POWER_KW"]

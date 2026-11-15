@@ -65,11 +65,18 @@ def clean_weather_data(df: pd.DataFrame, meta: PlantMetadata) -> pd.DataFrame:
     df["AMBIENT_TEMPERATURE"] = df["AMBIENT_TEMPERATURE"].clip(lower=-10.0, upper=60.0)
     df["MODULE_TEMPERATURE"] = df["MODULE_TEMPERATURE"].clip(lower=-10.0, upper=85.0)
 
-    # Forward fill small gaps if present
+    # Fill only from earlier observations. Backfilling would copy a later
+    # weather reading into an earlier timestamp and can leak future data.
     df = df.sort_values("DATE_TIME").reset_index(drop=True)
-    df["IRRADIATION"] = df["IRRADIATION"].ffill().bfill()
-    df["AMBIENT_TEMPERATURE"] = df["AMBIENT_TEMPERATURE"].ffill().bfill()
-    df["MODULE_TEMPERATURE"] = df["MODULE_TEMPERATURE"].ffill().bfill()
+    weather_columns = ["IRRADIATION", "AMBIENT_TEMPERATURE", "MODULE_TEMPERATURE"]
+    df[weather_columns] = df[weather_columns].ffill()
+
+    missing_columns = df[weather_columns].columns[df[weather_columns].isna().any()].tolist()
+    if missing_columns:
+        raise ValueError(
+            "Weather data has leading missing values that cannot be filled "
+            f"without using future observations: {missing_columns}"
+        )
 
     return df
 
